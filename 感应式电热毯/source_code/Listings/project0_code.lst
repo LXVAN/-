@@ -1,0 +1,467 @@
+C51 COMPILER V9.60.0.0   PROJECT0_CODE                                                     01/22/2024 21:15:07 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE PROJECT0_CODE
+OBJECT MODULE PLACED IN .\Objects\project0_code.obj
+COMPILER INVOKED BY: E:\Keil_v5\C51\BIN\C51.EXE project0_code.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\List
+                    -ings\project0_code.lst) OBJECT(.\Objects\project0_code.obj)
+
+line level    source
+
+   1          #include "reg51.h"
+   2          #include <stdlib.h>
+   3          #include <string.h>
+   4          #include <intrins.h>
+   5          //--------------------------------
+   6          sbit RS=P3^0;
+   7          sbit RW=P3^1;
+   8          sbit E=P3^2;
+   9          sbit DQ=P3^7;
+  10          //------------------------------------
+  11          
+  12          sbit ADCS = P2 ^ 0;  //ADµÄÆ¬Ñ¡ 
+  13          sbit ADDI = P2 ^ 5;
+  14          sbit ADDO = P2 ^ 5;
+  15          sbit ADCLK = P2 ^ 4;  //ADµÄCLK 
+  16          sbit gear0 = P1^1;//ÏÖÔÚ²âÊÔÖ»ÓÐ P1^1 ~ P1^4¿ÉÒÔÕý³£¹¤×÷
+  17          sbit gear1 = P1^2;
+  18          sbit gear2 = P1^3;
+  19          sbit on = P1^4;
+  20          sbit heat = P1^7;//¼ÓÈÈÐÅºÅÊä³ö¶Ë¿Ú
+  21          
+  22          
+  23          
+  24          
+  25          
+  26          //-----------------------------------
+  27          unsigned char dispbitcode[8] = { 0xF7,0xFB,0xFD,0xFE,0xEF,0xDF,0xBF,0x7F }; //Î»É¨Ãè
+  28          unsigned char dispcode[11] = { 0xC0,0xF9,0xA4,0xbB0,0x99,0x92,0x82,0xF8,0x80,0x90,0xFF };  //×îºóÒ»¸öÊÇÈ«Á
+             -Á£¬·ÀÖ¹³öÏÖÒ»Ð©ÎÊÌâ 
+  29          //¶ÎÑ¡Âë ¹²Ñô¼«
+  30          unsigned char dispbuf[4];
+  31          unsigned int pressure_;
+  32          unsigned char getdata;
+  33          //----------------------------------------------------
+  34          
+  35          
+  36          
+  37          
+  38          
+  39          
+  40          
+  41          
+  42          
+  43          
+  44          
+  45          
+  46          
+  47          
+  48          int readtemp=0;
+  49          unsigned char str[]={"0123456789"};
+  50          unsigned char s[]={"Temperature:"};
+  51          
+  52          void delay_18B20(unsigned int i)//ÑÓÊ±º¯Êý
+  53          {
+C51 COMPILER V9.60.0.0   PROJECT0_CODE                                                     01/22/2024 21:15:07 PAGE 2   
+
+  54   1              for(;i>0;i--);
+  55   1      }
+  56          
+  57          void Init_DS18B20(void)         //³õÊ¼»¯
+  58          {
+  59   1        unsigned char x=0;
+  60   1        DQ = 1;          //DQÀ­¸ß£¬
+  61   1        delay_18B20(8);  //ÉÔ×÷ÑÓÊ±
+  62   1        DQ = 0;          //DQÀ­µÍ£¬    ½«×ÜÏßÀ­µÍ£¬³ÖÐøÊ±¼äÎª480usµ½960usÖ®¼ä
+  63   1        delay_18B20(80); //ÑÓÊ±´óÓÚ480us
+  64   1        DQ = 1;          //À­¸ß×ÜÏß£¬½«×ÜÏßÀ­¸ß
+  65   1        delay_18B20(14);
+  66   1        x=DQ;            //Èôx=0³õÊ¼»¯³É¹¦£¬Èôx=1³õÊ¼»¯Ê§°Ü
+  67   1        delay_18B20(20);//µÈ´ýDS18B20µÄÓ¦´ð£¬Èô³õÊ¼»¯³É¹¦£¬»áÔÚ15-60usÖ®ºó²úÉúÒ»¸öµÍµçÆ½ÐÅºÅ£¬¸ÃÐÅºÅ»á³ÖÐø60usµ½
+             -240us
+  68   1      }                 //Ö®ºóDS18B20»áÖ÷¶¯ÊÍ·Å×ÜÏß£¬×ÜÏßµçÆ½»á±»À­¸ß
+  69          
+  70          unsigned char ReadOneChar(void)//¶ÁÊ±Ðò·ÖÎª¶Á¡°0¡±Ê±ÐòºÍ¶Á¡°1¡±Ê±ÐòÁ½¸ö¹ý³Ì¡£
+  71            {
+  72   1          unsigned char i=0;
+  73   1          unsigned char dat = 0;
+  74   1          for (i=8;i>0;i--) 
+  75   1          {
+  76   2            DQ = 0; // À­µÍ×ÜÏß£¬µ±Òª¶ÁÈ¡DS18B20µÄÊý¾ÝÊ±£¬ÎÒÃÇÐèÒª½«×ÜÏßÀ­µÍ£¬²¢±£³Ö1usµÄÊ±¼ä£¬
+  77   2            dat>>=1;//Ã¿¶ÁÈ¡ÒÆÎ»ÏòÓÒÒÆÒÆÎ»
+  78   2            DQ = 1; //À­¸ß×ÜÏß£¬È»ºó½«×ÜÏßÀ­¸ß£¬´ËÊ±Ðè¾¡¿ì¶ÁÈ¡¡£
+  79   2            if(DQ)
+  80   2            dat|=0x80;
+  81   2            delay_18B20(4);//´ÓÀ­µÍµ½¶ÁÈ¡Òý½Å×´Ì¬µÄÊ±¼ä²»ÄÜ³¬¹ý15us¡£
+  82   2           }
+  83   1           return(dat);
+  84   1        }
+  85                  
+  86          void WriteOneChar(unsigned char dat)//Ð´Ê±Ðò·ÖÎªÐ´¡°0¡±Ê±ÐòºÍÐ´¡°1¡±Ê±ÐòÁ½¸ö¹ý³Ì¡£DS18B20Ð´¡°0¡±Ê±ÐòºÍÐ´¡°
+             -1¡±Ê±ÐòµÄÒªÇó²»Í¬£¬
+  87                  
+  88          {
+  89   1        unsigned char i=0;
+  90   1        for (i=8; i>0; i--)
+  91   1        {
+  92   2         DQ = 0;           
+  93   2         DQ = dat&0x01;
+  94   2         if(DQ){delay_18B20(1);DQ=1;}//µ±ÒªÐ´¡°0¡±Ê±£¬µ¥×ÜÏßÒª±»À­µÍÖÁÉÙ60?s£¬ÒÔ±£Ö¤DS18B20ÄÜ¹»ÔÚ15?sµ½45?sÖ®¼ä£
+             -¬ÕýÈ·µØ²ÉÑùI/O×ÜÏßÉÏµÄ¡°0¡±µçÆ½
+  95   2               else{delay_18B20(5);DQ = 1;}//µ±ÒªÐ´¡°1¡±Ê±£¬µ¥×ÜÏß±»À­µÍÖ®ºó£¬ÔÚ15?sÖ®ÄÚ¾ÍµÃÊÍ·Åµ¥×ÜÏß¡£
+  96   2         dat>>=1;
+  97   2         }
+  98   1      }
+  99          
+ 100          unsigned char ReadTemperature(void)//¶ÁÎÂ¶È
+ 101          {                                                        
+ 102   1       unsigned char a=0,b=0;
+ 103   1       unsigned int temp=0;
+ 104   1       Init_DS18B20();
+ 105   1       WriteOneChar(0xCC);  // Ìø¹ý¶ÁÐòÁÐºÅ²Ù×÷
+ 106   1       WriteOneChar(0x44);  // Æô¶¯ÎÂ¶È×ª»»
+ 107   1       delay_18B20(100);    // 
+ 108   1       Init_DS18B20();
+ 109   1       WriteOneChar(0xCC);  //Ìø¹ý¶ÁÐòÁÐºÅ²Ù×÷
+ 110   1       WriteOneChar(0xBE);  //¶ÁÈ¡ÎÂ¶È¼Ä´æÆ÷
+ 111   1       delay_18B20(100);
+ 112   1       a=ReadOneChar();     //¶ÁÎÂ¶ÈµÍÎ»
+C51 COMPILER V9.60.0.0   PROJECT0_CODE                                                     01/22/2024 21:15:07 PAGE 3   
+
+ 113   1       b=ReadOneChar();     //¶ÁÎÂ¶È¸ßÎ»
+ 114   1       temp=((b*256+a)>>4); //µ±Ç°²É¼¯ÎÂ¶È³ý16µÃµ½Êµ¼ÊÎÂ¶È
+ 115   1       return(temp);
+ 116   1      }
+ 117          
+ 118          void delay(unsigned int n)//ÑÓÊ±º¯Êý
+ 119          {
+ 120   1        unsigned int i=0,j=0;
+ 121   1              for(i=0;i<n;i++)
+ 122   1              {
+ 123   2                for(j=0;j<120;j++);
+ 124   2              }
+ 125   1      }
+ 126          
+ 127          void writedat(unsigned char dat)//Ð´Êý¾Ýº¯Êý£¬LCD1602µÄº¯Êý
+ 128          {
+ 129   1        RS=1;  //  RS:Êý¾Ý/ÃüÁîÑ¡Ôñ¶Ë
+ 130   1              RW=0;  //  R/W :¶Á/Ð´Ñ¡Ôñ¶Ë 
+ 131   1              E=0;   //  Ê¹ÄÜ¶Ë:ÏÂ½µÑØÓÐÐ§ 
+ 132   1              P1=dat;
+ 133   1              delay(5);
+ 134   1              E=1;
+ 135   1              E=0;
+ 136   1      }
+ 137          
+ 138          void writecom(unsigned char com)//Ð´ÃüÁîº¯Êý 
+ 139          {
+ 140   1        RS=0;  //  RS:Êý¾Ý/ÃüÁîÑ¡Ôñ¶Ë 
+ 141   1              RW=0;  //  R/W :¶Á/Ð´Ñ¡Ôñ¶Ë  
+ 142   1              E=0;   //Ê¹ÄÜ¶Ë:ÏÂ½µÑØÓÐÐ§ 
+ 143   1              P1=com;
+ 144   1              delay(5);
+ 145   1              E=1;
+ 146   1              E=0; 
+ 147   1      }
+ 148          
+ 149          void initlcd()//³õÊ¼»¯LCD1602
+ 150          {
+ 151   1        writecom(0x38);  //0x38£»ÉèÖÃ16¡Á2ÏÔÊ¾
+ 152   1              writecom(0x0c);  //0x0C£ºÉèÖÃ¿ªÏÔÊ¾£¬²»ÏÔÊ¾¹â±ê
+ 153   1              writecom(0x06);  //0x06£ºÐ´Ò»¸ö×Ö·ûºóµØÖ·Ö¸Õë¼Ó1
+ 154   1              writecom(0x01);  //0x01£ºÏÔÊ¾Çå0£¬Êý¾ÝÖ¸ÕëÇå0
+ 155   1      }
+ 156          
+ 157          int displayTemp()//ÏÔÊ¾º¯Êý
+ 158          {
+ 159   1              char a;
+ 160   1              unsigned int temp0=0,temp1=0,temp2=0,i=0;
+ 161   1              temp0=readtemp/100;
+ 162   1              temp1=(readtemp%100)/10;
+ 163   1              temp2=readtemp%10;
+ 164   1              writecom(0x80);  //0x80£ºLCDµÚÒ»ÐÐµÄÆðÊ¼µØÖ·
+ 165   1              delay(5);       // ÑÓÊ±
+ 166   1              while(s[i]!='\0')
+ 167   1              {
+ 168   2                writedat(s[i]);
+ 169   2                      delay(5);
+ 170   2                      i++;
+ 171   2              }
+ 172   1              a=6;
+ 173   1              writecom(0x80+0x40+5);  //0x80+0x40£ºLCDµÚ2ÐÐµÄÆðÊ¼µØÖ·
+ 174   1              delay(5);
+C51 COMPILER V9.60.0.0   PROJECT0_CODE                                                     01/22/2024 21:15:07 PAGE 4   
+
+ 175   1              writedat(str[temp0]);
+ 176   1              delay(5);           //ÑÓÊ±
+ 177   1              writedat(str[temp1]);
+ 178   1              delay(5);            //ÑÓÊ±     
+ 179   1              writedat(str[temp2]);
+ 180   1              delay(5);
+ 181   1              writedat(0xDF);
+ 182   1              delay(5);           //ÑÓÊ±
+ 183   1              writedat('C');
+ 184   1              delay(5);       //ÑÓÊ±
+ 185   1              
+ 186   1              return str[temp0]+str[temp1]+str[temp2];
+ 187   1              
+ 188   1      }
+ 189          
+ 190          
+ 191          
+ 192          
+ 193          
+ 194          //----------------------------------------------------  
+ 195          //----------------------------------------------------  
+ 196          //----------------------------------------------------  
+ 197          //----------------------------------------------------  
+ 198          //----------------------------------------------------  
+ 199          //----------------------------------------------------  
+ 200          //----------------------------------------------------  
+ 201          void delay_1ms(void)
+ 202          {
+ 203   1              unsigned char x, y;
+ 204   1              x = 3;
+ 205   1              while (x--)
+ 206   1              {
+ 207   2                      y = 40;
+ 208   2                      while (y--);
+ 209   2              }
+ 210   1      }
+ 211          void displayPressure(void)
+ 212          {
+ 213   1              char k;
+ 214   1              dispbuf[3] = pressure_ / 1000;  //×î¸ßÎ» 
+ 215   1                              dispbuf[2] = (pressure_ % 1000) / 100;
+ 216   1                              dispbuf[1] = ((pressure_ % 1000) % 100) / 10;
+ 217   1                              dispbuf[0] = ((pressure_ % 1000) % 100) % 10;  //×îµÍÎ»
+ 218   1              for (k = 0; k < 4; k++)
+ 219   1              {
+ 220   2                      P1 = ~dispbitcode[k];
+ 221   2                      P0 = ~dispcode[dispbuf[k]];
+ 222   2                      if (k == 1)
+ 223   2                              P0 = P0 + 0x80;
+ 224   2                      delay_1ms();
+ 225   2              }
+ 226   1      }
+ 227          
+ 228          unsigned int ADC0832(unsigned char channel)  //AD×ª»»£¬·µ»Ø½á¹û
+ 229          {
+ 230   1              unsigned char i = 0;
+ 231   1              unsigned char j;
+ 232   1              unsigned int dat = 0;
+ 233   1              unsigned char ndat = 0;
+ 234   1      
+ 235   1              if (channel == 0) channel = 2;
+ 236   1              if (channel == 1) channel = 3;
+C51 COMPILER V9.60.0.0   PROJECT0_CODE                                                     01/22/2024 21:15:07 PAGE 5   
+
+ 237   1              ADDI = 1;
+ 238   1              _nop_();
+ 239   1              _nop_();
+ 240   1              ADCS = 0;
+ 241   1              _nop_();
+ 242   1              _nop_();
+ 243   1              ADCLK = 1;
+ 244   1              _nop_();
+ 245   1              _nop_();
+ 246   1              ADCLK = 0;
+ 247   1              _nop_();
+ 248   1              _nop_();
+ 249   1              ADCLK = 1;
+ 250   1              ADDI = channel & 0x1;
+ 251   1              _nop_();
+ 252   1              _nop_();
+ 253   1              ADCLK = 0;
+ 254   1              _nop_();
+ 255   1              _nop_();
+ 256   1              ADCLK = 1;
+ 257   1              ADDI = (channel >> 1) & 0x1;
+ 258   1              _nop_();
+ 259   1              _nop_();
+ 260   1              ADCLK = 0;
+ 261   1              ADDI = 1;
+ 262   1              _nop_();
+ 263   1              _nop_();
+ 264   1              dat = 0;
+ 265   1              for (i = 0; i < 8; i++)
+ 266   1              {
+ 267   2                      dat |= ADDO;
+ 268   2                      ADCLK = 1;
+ 269   2                      _nop_();
+ 270   2                      _nop_();
+ 271   2                      ADCLK = 0;
+ 272   2                      _nop_();
+ 273   2                      _nop_();
+ 274   2                      dat <<= 1;
+ 275   2                      if (i == 7) dat |= ADDO;
+ 276   2              }
+ 277   1              for (i = 0; i < 8; i++)
+ 278   1              {
+ 279   2                      j = 0;
+ 280   2                      j = j | ADDO;
+ 281   2                      ADCLK = 1;
+ 282   2                      _nop_();
+ 283   2                      _nop_();
+ 284   2                      ADCLK = 0;
+ 285   2                      _nop_();
+ 286   2                      _nop_();
+ 287   2                      j = j << 7;
+ 288   2                      ndat = ndat | j;
+ 289   2                      if (i < 7) ndat >>= 1;
+ 290   2              }
+ 291   1              ADCS = 1;
+ 292   1              ADCLK = 0;
+ 293   1              ADDO = 1;
+ 294   1              dat <<= 8;
+ 295   1              dat |= ndat;
+ 296   1              return(dat);
+ 297   1      }
+ 298          
+C51 COMPILER V9.60.0.0   PROJECT0_CODE                                                     01/22/2024 21:15:07 PAGE 6   
+
+ 299          
+ 300          
+ 301          //----------------------------------------------------------
+ 302          
+ 303          void main()
+ 304          {
+ 305   1              float voltage;
+ 306   1              int pressure0,tperature0,tperature1,tperature2,Gear,a;
+ 307   1              //int *a;
+ 308   1              pressure0 = 1000;//µ±²âÁ¿Ñ¹Ç¿´óÓÚÕâ¸öÖµ¾ÍÒª¿ªÊ¼¼ÓÈÈ,Õâ¸öÖµÐèÒª²Î¿¼ÈËÌå¶Ô´²µÄ×îÐ¡Ñ¹Ç¿
+ 309   1              tperature0 = 40;//3¸öÎÂ¶Èµµ
+ 310   1              tperature1 = 45;
+ 311   1              tperature2 = 50;
+ 312   1              initlcd();
+ 313   1              
+ 314   1              
+ 315   1              while(1)
+ 316   1              {
+ 317   2                      
+ 318   2               readtemp=ReadTemperature();//ÎÂ¶ÈµÄÊ®½øÖÆÊý    
+ 319   2               //readtemp = (float)readtemp;
+ 320   2               //readtemp -=10;
+ 321   2                              
+ 322   2               //displayTemp();
+ 323   2                      
+ 324   2                      
+ 325   2                      getdata = ADC0832(0);   //Ê¹ÓÃCH0 
+ 326   2                      if (14 < getdata < 243)   //Ñ¹Á¦²âÁ¿·¶Î§ 
+ 327   2                      {
+ 328   3                              int vary = getdata;
+ 329   3                              /*Ñ¹Á¦´«¸ÐÆ÷½«Ñ¹Á¦×ª»»ÎªµçÑ¹Á¿£¬AD½«Õâ¸öµçÑ¹Öµ½øÐÐÊýÄ£×ª»»£¬µ«ÊÇµçÑ¹Öµ²¢²»Ö±½ÓÒâÎ¶×ÅÑ¹Á¦µÄ´óÐ¡
+ 330   3                              ÀýÈç5V²¢²»ÒâÎ¶×Å5kPa,Òò´Ë»¹ÐèÒªÒ»²½×ª»»*/ 
+ 331   3                              voltage = ((10.0 / 23.0)*vary) + 9.3; //press¼´ÊÇµçÑ¹ 
+ 332   3                              pressure_ = (int)(voltage * 10);//ÓÉÓÚpressure ÊÇÓÃÄâºÏ³öÀ´µÄÇúÏßÔËËã³öÀ´µÄ,ËùÒÔÔËËã³öÀ´µÄÊýÖµ»áºÍÊµ¼ÊÊ
+             -ýÖµÓÐÆ«²î
+ 333   3                              //ÏÔÊ¾buff£¬Ò»¹²ËÄÎ» ,Õâ¸öpressure ±ÈÊµ¼ÊÖµ´óÊ®±¶,ÉèÖÃÑ¹Á¦ãÐÖµµÄÊ±ºòÒª°ÑãÐÖµ³ËÒÔÊ®±¶,²»È»²»ÄÜ×ö³öÅÐ¶Ï
+ 334   3                               
+ 335   3                              //displayPressure();                    
+ 336   3                      }
+ 337   2                      P1 = 0x00;
+ 338   2                      if(on)
+ 339   2                      {
+ 340   3                              tperature0 = 40;//3¸öÎÂ¶Èµµ
+ 341   3                              tperature1 = 45;
+ 342   3                              tperature2 = 50;
+ 343   3                              
+ 344   3                              if(pressure_>pressure0)
+ 345   3                              {
+ 346   4                                      if(gear0==1&&(readtemp<tperature0))
+ 347   4                                      {
+ 348   5                                              heat = 1;
+ 349   5                                              delay(50);
+ 350   5                                      }else if(gear0==1&&(readtemp>tperature0))
+ 351   4                                      {
+ 352   5                                              heat = 0;
+ 353   5                                              delay(50);
+ 354   5                                      }
+ 355   4                                      
+ 356   4                                      if(gear1==1&&(readtemp<tperature1))
+ 357   4                                      {
+ 358   5                                              heat = 1;
+ 359   5                                              delay(50);
+C51 COMPILER V9.60.0.0   PROJECT0_CODE                                                     01/22/2024 21:15:07 PAGE 7   
+
+ 360   5                                      }else if(gear1==1&&(readtemp>tperature1))
+ 361   4                                      {
+ 362   5                                              heat = 0;
+ 363   5                                              delay(60);
+ 364   5                                      }
+ 365   4                                      if(gear2==1&&(readtemp<tperature2))
+ 366   4                                      {
+ 367   5                                              heat = 1;
+ 368   5                                              delay(50);
+ 369   5                                      }else if(gear2==1&&(readtemp>tperature2))
+ 370   4                                      {
+ 371   5                                              heat = 0;
+ 372   5                                      }
+ 373   4                                      delay(50);
+ 374   4                                      
+ 375   4      
+ 376   4      
+ 377   4      
+ 378   4                                      
+ 379   4                              }
+ 380   3                              
+ 381   3                      }
+ 382   2                      else
+ 383   2                      {
+ 384   3                              heat = 0;
+ 385   3                      }
+ 386   2                      
+ 387   2                      
+ 388   2                      delay(10);//×îºó¼ÓÒ»¸öÑÓÊ±,ÑÓ»ºÅÐ¶ÏÊ±¼ä,·ÀÖ¹¼ÓÈÈ¶Ï¶ÏÐøÐø
+ 389   2                      
+ 390   2                      
+ 391   2                      
+ 392   2                      
+ 393   2      //              if(pressure_>1030&&readtemp<45)
+ 394   2      //              {
+ 395   2      //                      heat = 1;
+ 396   2      //              }
+ 397   2      //              else
+ 398   2      //              {
+ 399   2      //                      heat = 0;
+ 400   2      //              }
+ 401   2                      
+ 402   2                      
+ 403   2                      
+ 404   2                                              
+ 405   2                                              
+ 406   2                                              
+ 407   2                                                
+ 408   2                      
+ 409   2      //                      if(0&&readtemp>26)
+ 410   2      //                      {
+ 411   2      //                              P0 = 0x55;
+ 412   2      //                      }
+ 413   2      //                      else
+ 414   2      //                      {
+ 415   2      //                              P0 = 0x00;
+ 416   2      //                      }
+ 417   2                      
+ 418   2                      
+ 419   2                      
+ 420   2              } 
+ 421   1      }
+C51 COMPILER V9.60.0.0   PROJECT0_CODE                                                     01/22/2024 21:15:07 PAGE 8   
+
+*** WARNING C280 IN LINE 306 OF project0_code.c: 'Gear': unreferenced local variable
+*** WARNING C280 IN LINE 306 OF project0_code.c: 'a': unreferenced local variable
+ 422          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1164    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     52      26
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  2 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,4 @@
+".\Objects\STARTUP.obj",
+".\Objects\project0_code.obj" 
+TO ".\Objects\project0_compiled_hex_code" 
+PRINT(".\Listings\project0_compiled_hex_code.m51")
